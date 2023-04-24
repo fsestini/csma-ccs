@@ -1,0 +1,103 @@
+********************************************************************************
+***  Definizione in CCS della specifica  ****************************************
+********************************************************************************
+
+agent Spec12 = send1.S12;
+agent S12 = 'p.'begin1.'end1.'v.('rec2.Spec12 + send1.'rec2.S12);
+agent Spec21 = send2.S21;
+agent S21 = 'p.'begin2.'end2.'v.('rec1.Spec21 + send2.'rec1.S21);
+agent MediumSpec = p.v.MediumSpec;
+
+agent Spec = (Spec12|Spec21|MediumSpec)\{p, v};
+
+********************************************************************************
+***  Definizione in CCS del protocollo CSMA/CD  ********************************
+********************************************************************************
+
+agent Transmitter1 = send1.Transmitting1;
+agent Transmitting1 = 'bt1.Transmit1;
+agent Transmit1 = c.Transmitting1 + acq1.'begin1.'end1.'et.Transmitter1;
+
+agent Transmitter2 = send2.Transmitting2;
+agent Transmitting2 = 'bt2.Transmit2;
+agent Transmit2 = c.Transmitting2 + acq2.'begin2.'end2.'et.Transmitter2;
+
+agent Receiver1 = br1.(bad.Receiver1 + er.'rec1.Receiver1);
+agent Receiver2 = br2.(bad.Receiver2 + er.'rec2.Receiver2);
+
+agent Medium = bt1.Medium1 + bt2.Medium2;
+agent Medium1 = bt2.Collision + 'br2.(bt2.HardCollision + 'acq1.et.'er.Medium);
+agent Medium2 = bt1.Collision + 'br1.(bt1.HardCollision + 'acq2.et.'er.Medium);
+agent Collision = 'c.'c.Medium;
+agent HardCollision = 'bad.Collision;
+
+agent MAC1 = Transmitter1 | Receiver1;
+agent MAC2 = Transmitter2 | Receiver2;
+
+agent Protocol = (MAC1 | MAC2 | Medium)\{bt1,et,br1,er,c,bt2,br2,acq1,acq2,bad};
+
+********************************************************************************
+*** Equivalence checking  ******************************************************
+********************************************************************************
+
+***  Bisimilarità forte  ***
+strongeq(Protocol, Spec);
+checkprop(Protocol, <send1><tau><tau>T);
+checkprop(Spec, <send1><tau><tau>T);
+
+
+***  Bisimilarità debole  ***
+eq(Protocol, Spec);
+diveq(Protocol, Spec);
+
+
+***  Congruenza osservazionale  ***
+stable Protocol;
+stable Spec;
+cong(Protocol, Spec);
+
+
+***  Weak trace equivalence  ***
+mayeq(Protocol, Spec);
+
+
+********************************************************************************
+***  Property checking  ********************************************************
+********************************************************************************
+
+prop Pos(P) = min(X. P | <-> X);
+prop Inv(P) = max(X.(P & [-]X));
+prop Even(P) = min(X. P | (<->T & [-]X));
+
+
+*** Livelock ***
+prop Livelock = max(X. <tau>X);
+checkprop(Protocol, Pos(Livelock));
+checkprop(Spec, ~Pos(Livelock));
+
+
+***  Mutua esclusione  ***
+prop Mutex = Inv(['end1]F | ['end2]F);
+checkprop(Spec, Mutex);
+checkprop(Protocol, Mutex);
+
+
+***  Ricezione  ***
+prop EvenReceive1 = Inv(['end1] Even(<'rec2>T));
+prop EvenReceive2 = Inv(['end2] Even(<'rec1>T));
+prop EvenReceive = EvenReceive1 & EvenReceive2;
+checkprop(Protocol, EvenReceive);
+
+
+***  Reinvio  ***
+prop CanResend1 = Inv(['end1]<<send1>>T);
+prop CanResend2 = Inv(['end2]<<send2>>T);
+prop CanResend = CanResend1 & CanResend2;
+checkprop(Protocol, CanResend);
+
+
+***  Assenza di starvation  ***
+prop NoStarvation12 = Inv([send1] Pos(<'begin1>T));
+prop NoStarvation21 = Inv([send2] Pos(<'begin2>T));
+prop NoStarvation = NoStarvation12 & NoStarvation21;
+checkprop(Protocol, NoStarvation);
