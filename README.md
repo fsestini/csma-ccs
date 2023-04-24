@@ -18,7 +18,9 @@ if it manages to transmit beyond the *contention* period without *collisions*.
 
 The protocol is modeled using a process calculus, the Calculus of Communicating
 Systems (CCS) [1], within CWB. It involves three parties (MAC1, MAC2, and the
-shared medium) exchanging the following messages:
+shared medium). Each station is modeled as two CCS processes (a transmitter and a
+receiver) executing concurrently. The full system is thus modelled as five
+concurrent CCS processes. These exchang the following messages:
 
 * `send`: submit a message to the channel;
 * `begin`: begin exclusive use of the channel;
